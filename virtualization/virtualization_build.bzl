@@ -17,8 +17,11 @@ def virtualization_build(
     rpi4_dtb = "@custom_qemu//:rpi4_dtb",
     host_dir = "@toolchains_qnx_sdp//:host_dir",
     host_all = "@toolchains_qnx_sdp//:host_all",
-    init_script = None,  # Path to optional init script to install
+    init_script = None,
+    disable = False
 ):
+    if disable:
+        return
     native.config_setting(
         name = name + "_is_qnx_x86_64",
         constraint_values = [
@@ -35,45 +38,33 @@ def virtualization_build(
         ],
     )
 
-    native.genrule(
-            name = name + "_stage_build_artefacts",
-            srcs = srcs,
-            outs = outs,
-            cmd = """
-                set -e
-                srcs=($(SRCS))
-                outs=($(OUTS))
+    init_script_out = "custom/" + "startup_script" if init_script != None else None
 
-                for i in $${!srcs[@]}; do
-                    out=$${outs[$$i]}
-                    mkdir -p "$$(dirname \"$$out\")"
-                    cp "$${srcs[$$i]}" "$$out"
-                    chmod +x "$$out"
-                done
-            """,
-            visibility = ["//visibility:public"],
+    native.genrule(
+        name = name + "_stage_build_artefacts",
+        srcs = srcs + ([init_script] if init_script != None else []),
+        outs = outs + ([init_script_out] if init_script_out != None else []),
+        cmd = """
+          set -e
+          srcs=($(SRCS))
+          outs=($(OUTS))
+
+          for i in $${!srcs[@]}; do
+            out=$${outs[$$i]}
+            mkdir -p "$$(dirname \"$$out\")"
+            cp "$${srcs[$$i]}\" \"$$out\"
+            chmod +x \"$$out\"
+          done
+        """,
+        visibility = ["//visibility:public"],
     )
 
-    # Optionally install an init_script into the image
-    init_script_out = None
-    if init_script:
-            init_script_out = name + "_init_script_installed"
-            native.genrule(
-                    name = init_script_out,
-                    srcs = [init_script],
-                    outs = ["install/boot/sys/startup-custom"],
-                    cmd = "cp $< $@ && chmod +x $@",
-                    visibility = ["//visibility:public"],
-            )
 
-    overlay_files = overlay_srcs + ["@score_virtualization//virtualization:baseline_image_install_files"]
-    if init_script_out:
-            overlay_files.append(":install/boot/sys/startup-custom")
 
     native.filegroup(
-            name = name + "_overlay_tree",
-            srcs = overlay_files,
-            visibility = ["//visibility:public"],
+        name = name + "_overlay_tree",
+        srcs = overlay_srcs + ["@score_virtualization//virtualization:baseline_image_install_files"],
+        visibility = ["//visibility:public"],
     )
 
     qnx_ifs(

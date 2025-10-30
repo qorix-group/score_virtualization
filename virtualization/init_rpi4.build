@@ -160,6 +160,10 @@
     # /sbin/shutdown -f
 
 
+    # Call user provided startup script
+    ksh /proc/boot/startup_script_internal.sh
+    
+
     ############################################################################################
     ## Start the main shell
     ############################################################################################
@@ -629,6 +633,7 @@ ldqnx-64.so.2=ldqnx-64.so.2
 
 
 
+
 ################################################################################################
 ## Toybox commands
 ## Note: The toybox package combines many common Linux command line utilities together into
@@ -766,6 +771,16 @@ if [ -e /scripts/board_startup.sh ]; then
 fi
 }
 
+startup_script_internal.sh = {
+#!/bin/ksh
+
+if [ -e /usr/bin/startup_script ]; then
+    echo "Starting user custom startup script ..."
+    startup_script
+fi
+
+}
+
 
 
 ################################################################################################
@@ -789,6 +804,7 @@ usb_start.sh = {
 ## GPIO utility
 ################################################################################################
 /bin/gpio-bcm2711=gpio-bcm2711
+
 
 ################################################################################################
 ## Mailbox utility
