@@ -63,7 +63,7 @@ def virtualization_build(
 
     native.filegroup(
         name = name + "_overlay_tree",
-        srcs = overlay_srcs + ["@score_virtualization//virtualization:baseline_image_install_files"],
+        srcs = [":check_git_lfs"] + overlay_srcs + ["@score_virtualization//virtualization:baseline_image_install_files"],
         visibility = ["//visibility:public"],
     )
 
@@ -108,4 +108,16 @@ def virtualization_build(
             host_all,
             host_dir,
         ],
+    )
+
+    native.genrule(
+        name = "check_git_lfs",
+        outs = ["git_lfs_check.txt"],
+        cmd = """
+            if ! command -v git-lfs >/dev/null 2>&1; then
+                echo "ERROR: git-lfs not found. Please install Git LFS." >&2
+                exit 1
+            fi
+            echo "Git LFS is installed." > $@
+        """,
     )
