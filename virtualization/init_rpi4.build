@@ -629,10 +629,8 @@ ldqnx-64.so.2=ldqnx-64.so.2
 /usr/sbin/tracelogger=tracelogger
 
 # HERE You can add own files to the image
-/usr/bin=bazel-out/k8-fastbuild/bin/virtualization/custom
-
-
-
+/user_data=bazel-out/k8-fastbuild/bin/virtualization/custom
+/usr/bin=bazel-out/k8-fastbuild/bin/virtualization/custom_internal
 
 ################################################################################################
 ## Toybox commands

@@ -7,7 +7,6 @@ load("@score_toolchains_qnx//rules/fs:ifs.bzl", "qnx_ifs")
 def virtualization_build(
     name,
     srcs,
-    outs,
     overlay_srcs = [],
     qnx_ifs_outs = None,
     build_file_x86_64 = "@score_virtualization//virtualization:init_x86_64.build",
@@ -38,28 +37,20 @@ def virtualization_build(
         ],
     )
 
-    init_script_out = "custom/" + "startup_script" if init_script != None else None
+    init_script_out = "custom_internal/" + "startup_script" if init_script != None else None
 
-    native.genrule(
-        name = name + "_stage_build_artefacts",
-        srcs = srcs + ([init_script] if init_script != None else []),
-        outs = outs + ([init_script_out] if init_script_out != None else []),
-        cmd = """
-          set -e
-          srcs=($(SRCS))
-          outs=($(OUTS))
-
-          for i in $${!srcs[@]}; do
-            out=$${outs[$$i]}
-            mkdir -p "$$(dirname \"$$out\")"
-            cp "$${srcs[$$i]}\" \"$$out\"
-            chmod +x \"$$out\"
-          done
-        """,
-        visibility = ["//visibility:public"],
+    install_targets(
+        name = name + "install_all",
+        targets = srcs + ([init_script] if init_script != None else []),
+        install_dir = "custom",  # output directory
     )
 
-
+    native.genrule(
+        name = name + "startup_script",
+        srcs = [init_script],          # the file you want to copy
+        outs = [init_script_out],          # the destination filename
+        cmd = "cp $(SRCS) $@",          # $@ is the output file
+    )
 
     native.filegroup(
         name = name + "_overlay_tree",
@@ -72,7 +63,8 @@ def virtualization_build(
         srcs = select({
             ":" + name + "_is_qnx_aarch64": [
                 ":" + name + "_overlay_tree",
-                ":" + name + "_stage_build_artefacts",
+                ":" + name + "startup_script",
+                ":" + name + "install_all"
             ],
             "//conditions:default": [],
         }),
@@ -121,3 +113,36 @@ def virtualization_build(
             echo "Git LFS is installed." > $@
         """,
     )
+
+def _install_targets_impl(ctx):
+    install_dir = ctx.actions.declare_directory(ctx.attr.install_dir)
+
+    # Merge all runfiles from targets
+    all_files = depset(transitive=[dep[DefaultInfo].default_runfiles.files for dep in ctx.attr.targets])
+
+    cmd_lines = [
+        "set -euo pipefail",
+        "dest_dir='{}'".format(install_dir.path),
+        "mkdir -p \"$dest_dir\"",
+    ]
+
+    for f in all_files.to_list():
+        cmd_lines.append("mkdir -p \"$dest_dir/$(dirname {})\"".format(f.short_path))
+        cmd_lines.append("cp {} \"$dest_dir/{}\"".format(f.path, f.short_path))
+
+    ctx.actions.run_shell(
+        inputs=all_files,
+        outputs=[install_dir],
+        command="\n".join(cmd_lines),
+    )
+
+    return [DefaultInfo(files=depset([install_dir]))]
+
+
+install_targets = rule(
+    implementation=_install_targets_impl,
+    attrs={
+        "targets": attr.label_list(allow_files=True),          # targets to install
+        "install_dir": attr.string(),          # name of output directory
+    },
+)
