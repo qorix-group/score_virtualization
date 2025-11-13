@@ -774,7 +774,7 @@ startup_script_internal.sh = {
 
 if [ -e /usr/bin/startup_script ]; then
     echo "Starting user custom startup script ..."
-    startup_script
+    . /usr/bin/startup_script
 fi
 
 }
