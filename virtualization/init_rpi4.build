@@ -158,18 +158,15 @@
 
     # power off so the Bazel test wrapper can detect completion
     # /sbin/shutdown -f
-
-
-    # Call user provided startup script
-    ksh /proc/boot/startup_script_internal.sh
     
 
     ############################################################################################
     ## Start the main shell
     ############################################################################################
-    # reopen /dev/ser1
-    display_msg "Starting shell ..."
-    [+session] ksh &
+    display_msg "WRITABLE path is /data. This path holds ramfs that is capable of regular operations like like folder creation"
+    display_msg "Calling Ctrl+] will kill qemu. Currenlty Ctrl + C does not work...."
+    # ENV here is a startup env script sourced on startup
+    [+session]  ENV=/proc/boot/startup_script_internal.sh ksh &
 }
 
 
@@ -291,6 +288,9 @@ fi
 [uid=0 gid=0 perms=4755] /sbin/ping=ping
 /sbin/route=route
 /sbin/sysctl=sysctl
+/sbin/stty=stty
+/sbin/getty=getty
+/usr/share/terminfo=${QNX_TARGET}/usr/share/terminfo
 
 /usr/bin/netstat=netstat
 /usr/bin/sockstat=sockstat
@@ -769,7 +769,7 @@ if [ -e /scripts/board_startup.sh ]; then
 fi
 }
 
-startup_script_internal.sh = {
+[perms=777] startup_script_internal.sh = {
 #!/bin/ksh
 
 if [ -e /usr/bin/startup_script ]; then

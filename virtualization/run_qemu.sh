@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+stty intr ^]
 
 QNX_HOST=$1
 
@@ -23,11 +24,10 @@ if [[ "$IFS_IMAGE" == *"aarch64"* ]]; then
     -s \
     -serial tcp::12345,server,nowait \
     -serial stdio \
-    -serial tcp::12346,server,nowait \
     -pidfile /tmp/qemu.pid
 else
   echo "⚙️  Running QEMU for x86_64"
-  qemu-system-x86_64 \
+  exec qemu-system-x86_64 \
     -smp 2 \
     -m 1024 \
     -nographic \
